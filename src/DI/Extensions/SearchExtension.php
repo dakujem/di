@@ -38,6 +38,7 @@ final class SearchExtension extends Nette\DI\CompilerExtension
 		return Expect::arrayOf(
 			Expect::structure([
 				'in' => Expect::string()->required(),
+				'as' => Expect::string(),
 				'files' => Expect::anyOf(Expect::listOf('string'), Expect::string()->castTo('array'))->default([]),
 				'classes' => Expect::anyOf(Expect::listOf('string'), Expect::string()->castTo('array'))->default([]),
 				'extends' => Expect::anyOf(Expect::listOf('string'), Expect::string()->castTo('array'))->default([]),
@@ -65,7 +66,10 @@ final class SearchExtension extends Nette\DI\CompilerExtension
 			}
 
 			foreach ($this->findClasses($batch) as $class) {
-				$this->classes[$class] = array_merge($this->classes[$class] ?? [], $batch->tags);
+				$this->classes[$class] = [
+				    'name' => array_merge($this->classes[$class]['name'] ?? [], $batch->tags),
+				    'tags' => array_merge($this->classes[$class]['tags'] ?? [], $batch->tags),
+                ];
 			}
 		}
 	}
@@ -120,14 +124,19 @@ final class SearchExtension extends Nette\DI\CompilerExtension
 		}
 
 		foreach ($this->classes as $class => $tags) {
+            $names = $tags['name'] ?? []; // TODO
+            $name = array_shift($names);
 			if (class_exists($class)) {
-				$def = $builder->addDefinition(null)
+				$def = $builder->addDefinition($name) // name here
 					->setType($class);
 			} else {
-				$def = $builder->addFactoryDefinition(null)
+				$def = $builder->addFactoryDefinition($name)  // name here
 					->setImplement($class);
 			}
-			$def->setTags(Arrays::normalize($tags, true));
+			if(count($names) > 0){
+			    // TODO add aliases
+            }
+			$def->setTags(Arrays::normalize($tags['tags'], true));
 		}
 	}
 
